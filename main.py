@@ -4,8 +4,15 @@ from rembg import remove, new_session
 
 app = FastAPI()
 
-# u2netp is the lightweight model, better suited to Render's free tier (512MB RAM)
-session = new_session("u2netp")
+# Model loads lazily on first request, not at startup,
+# so the server can open its port immediately.
+session = None
+
+def get_session():
+    global session
+    if session is None:
+        session = new_session("u2netp")
+    return session
 
 @app.get("/")
 def health_check():
@@ -14,5 +21,5 @@ def health_check():
 @app.post("/remove-background")
 async def remove_background(file: UploadFile = File(...)):
     input_bytes = await file.read()
-    output_bytes = remove(input_bytes, session=session)
+    output_bytes = remove(input_bytes, session=get_session())
     return Response(content=output_bytes, media_type="image/png")
